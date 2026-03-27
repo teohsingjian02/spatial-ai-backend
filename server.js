@@ -3,12 +3,19 @@ import cors from "cors";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
 import crypto from "crypto";
+import { fileURLToPath } from "url";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,10 +26,6 @@ if (!fs.existsSync(publicDir)) {
 }
 
 app.use("/public", express.static(publicDir));
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 app.get("/", (req, res) => {
   res.send("Spatial AI backend is running.");
@@ -49,16 +52,16 @@ app.post("/chat", async (req, res) => {
     const reply =
       completion.choices?.[0]?.message?.content?.trim() || "No reply.";
 
-    let audioUrl = null;
+    let audioUrl = "";
 
-    if (process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) {
-      const elevenUrl = `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`;
+    if (ELEVENLABS_API_KEY && ELEVENLABS_VOICE_ID) {
+      const elevenUrl = `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}`;
 
       const ttsResponse = await fetch(elevenUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "xi-api-key": process.env.ELEVENLABS_API_KEY
+          "xi-api-key": ELEVENLABS_API_KEY
         },
         body: JSON.stringify({
           text: reply,
@@ -86,10 +89,10 @@ app.post("/chat", async (req, res) => {
       audioUrl
     });
   } catch (error) {
-    console.error(error);
+    console.error("Server error:", error);
     res.status(500).json({
       reply: "Server error.",
-      audioUrl: null
+      audioUrl: ""
     });
   }
 });
